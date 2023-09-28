@@ -1,5 +1,12 @@
-.leaflet-container {
-  height: 100vh; /* Takes up the full height of the viewport */
-  width: 90%;
-  margin-left: auto;
+/* body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
 }
+
+.toolbar {
+  grid-column: 1;
+}
+
+.leaflet-container {
+  grid-column: 2;
+} */

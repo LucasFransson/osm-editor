@@ -1,0 +1,114 @@
+html {
+  font-size: 62.5%; }
+
+body {
+  padding: 0;
+  margin: 0;
+  font-size: 1.6rem;
+  box-sizing: border-box;
+  width: 100vw;
+  height: 100vh; }
+
+app-osm-editor {
+  display: grid;
+  grid-template-columns: auto 1fr; }
+
+*,
+*::after,
+*::before {
+  box-sizing: inherit;
+  font-family: "Yantramanav", sans-serif;
+  margin: 0;
+  padding: 0; }
+
+button {
+  all: unset;
+  cursor: pointer; }
+
+.leaflet-container {
+  height: 100vh;
+  /* Takes up the full height of the viewport */
+  width: 100%;
+  grid-template: 1; }
+
+.toolbar {
+  background-color: #272429;
+  border: 1px solid #05010a;
+  width: 15rem;
+  height: 40rem;
+  display: grid;
+  grid-template-rows: 4rem 10rem auto 2rem;
+  grid-template: 2; }
+  .toolbar__tab {
+    height: 4rem;
+    background-color: #38353a;
+    transition: all 0.2s ease-in-out; }
+    .toolbar__tab:hover {
+      background-color: #424044; }
+    .toolbar__tab.toggled-on {
+      background-color: #747276; }
+    .toolbar__tab:not(:last-child) {
+      border-bottom: 1px solid #05010a; }
+  .toolbar__button {
+    width: 10rem;
+    height: 3.5rem;
+    text-align: center;
+    border-radius: 0.2rem;
+    font-size: 1.6rem; }
+    .toolbar__button--save {
+      grid-row: 3;
+      background-color: #438bbb;
+      color: #f4f2f6;
+      justify-self: center;
+      align-self: end;
+      transition: all 0.2s ease-in-out; }
+      .toolbar__button--save:hover {
+        background-color: #6eb8e9; }
+      .toolbar__button--save:active {
+        background-color: #8cc8f0; }
+
+.square-tool__button {
+  font-size: 1.6rem;
+  color: #f4f2f6;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center; }
+  .square-tool__button svg {
+    margin-right: 1rem;
+    margin-left: -0.5rem; }
+
+.square-tool__expanded {
+  width: 10rem;
+  display: grid;
+  grid-template-rows: 5rem 5rem; }
+  .square-tool__expanded--col-width {
+    grid-row: 1;
+    height: 5rem;
+    display: grid;
+    grid-template-rows: 2rem 3rem; }
+  .square-tool__expanded--col-height {
+    grid-row: 2;
+    height: 5rem;
+    display: grid;
+    grid-template-rows: 2rem 3rem; }
+
+.square-tool__input {
+  height: 2rem; }
+  .square-tool__input--width {
+    grid-row: 2; }
+  .square-tool__input--height {
+    grid-row: 2; }
+
+.square-tool__text {
+  margin-left: 0.7rem;
+  margin-bottom: 0.7rem;
+  font-size: 1.2rem;
+  height: 1rem;
+  color: #f4f2f6; }
+  .square-tool__text--width {
+    grid-row: 1;
+    align-self: end; }
+  .square-tool__text--height {
+    grid-row: 1;
+    align-self: end; }

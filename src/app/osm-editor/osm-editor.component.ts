@@ -10,7 +10,21 @@
 // }
 
 import { Component, OnInit } from '@angular/core';
+// import 'leaflet-path-drag';
 import * as L from 'leaflet';
+// import { map, tileLayer, marker } from 'leaflet'; // TODO: Refactor and change to this
+
+const DEFAULT_ICON = L.icon({
+  iconUrl: 'assets/images/marker-icon.png',
+  shadowUrl: 'assets/images/marker-shadow.png',
+  iconSize: [25, 41],
+  shadowSize: [41, 41],
+  iconAnchor: [12, 41],
+  shadowAnchor: [4, 62],
+  popupAnchor: [1, -34],
+});
+
+L.Marker.prototype.options.icon = DEFAULT_ICON;
 
 @Component({
   selector: 'app-osm-editor',
@@ -18,19 +32,29 @@ import * as L from 'leaflet';
   //styleUrls: ['./osm-editor.component.css'],
 })
 export class OsmEditorComponent implements OnInit {
+  private readonly SCALE_FACTOR = 0.001; // TODO: Conside refactoring, this is for user-friendly numbers
+
   map?: L.Map;
   nodes: L.Marker[] = [];
   currentPolygon?: L.Polygon;
   savedPolygons: L.Polygon[] = [];
 
+  isSingleNodeMode = false;
   isSquareMode = false; // TODO: Change name and refactor
-  squareWidth = 0.001; // Default width for the square
-  squareHeight = 0.001; // Default height for the square
+  squareWidth = 1; // This represents 0.001 internally due to the SCALE_FACTOR
+  squareHeight = 1;
+  // squareWidth = 0.001; // Default width for the square
+  // squareHeight = 0.001; // Default height for the square
 
   ngOnInit() {}
 
   toggleSquareMode() {
     this.isSquareMode = !this.isSquareMode;
+  }
+
+  toggleSingleNodeMode() {
+    this.isSingleNodeMode = !this.isSingleNodeMode;
+    this.isSquareMode = false; // Ensure square mode is off when single node mode is on
   }
 
   onMapReady(map: L.Map) {
@@ -44,16 +68,42 @@ export class OsmEditorComponent implements OnInit {
     this.map.on('click', this.onMapClick.bind(this));
   }
 
+  // onMapClick(e: L.LeafletMouseEvent) {
+  //   if (!this.map) return; // Exit if map is not initialized
+
+  //   if (this.isSquareMode) {
+  //     this.createSquare(e.latlng);
+  //     this.isSquareMode = false; // Reset the mode after creating the square
+  //   } else {
+  //     const marker = L.marker(e.latlng, { draggable: true }).addTo(this.map);
+  //     marker.on('dragend', this.onMarkerDragEnd.bind(this));
+
+  //     this.nodes.push(marker);
+
+  //     if (this.nodes.length > 1) {
+  //       if (this.currentPolygon) {
+  //         this.currentPolygon.remove();
+  //       }
+
+  //       const latlngs = this.nodes.map((node) => node.getLatLng());
+  //       this.currentPolygon = L.polygon(latlngs).addTo(this.map);
+  //     }
+  //   }
+  // }
+
   onMapClick(e: L.LeafletMouseEvent) {
     if (!this.map) return; // Exit if map is not initialized
 
     if (this.isSquareMode) {
       this.createSquare(e.latlng);
       this.isSquareMode = false; // Reset the mode after creating the square
+    } else if (this.isSingleNodeMode) {
+      const marker = L.marker(e.latlng, { draggable: true }).addTo(this.map);
+      marker.on('dragend', this.onMarkerDragEnd.bind(this));
+      this.nodes.push(marker);
     } else {
       const marker = L.marker(e.latlng, { draggable: true }).addTo(this.map);
       marker.on('dragend', this.onMarkerDragEnd.bind(this));
-
       this.nodes.push(marker);
 
       if (this.nodes.length > 1) {
@@ -75,8 +125,11 @@ export class OsmEditorComponent implements OnInit {
   }
   createSquare(center: L.LatLng) {
     // Calculate half width and height for positioning
-    const halfWidth = this.squareWidth / 2;
-    const halfHeight = this.squareHeight / 2;
+    // const halfWidth = this.squareWidth / 2;
+    // const halfHeight = this.squareHeight / 2;
+
+    const halfWidth = (this.squareWidth * this.SCALE_FACTOR) / 2;
+    const halfHeight = (this.squareHeight * this.SCALE_FACTOR) / 2;
 
     // Calculate the 4 corners of the square based on the provided width and height
     const topLeft = new L.LatLng(
