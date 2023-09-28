@@ -1,4 +1,26 @@
 <div style="height: 500px">
+  <div>
+    <button (click)="saveCurrentArea()">Save Current Area</button>
+    <div *ngIf="isSquareMode">
+      <label>
+        Width:
+        <input
+          [(ngModel)]="squareWidth"
+          type="number"
+          placeholder="Enter width"
+        />
+      </label>
+      <label>
+        Height:
+        <input
+          [(ngModel)]="squareHeight"
+          type="number"
+          placeholder="Enter height"
+        />
+      </label>
+    </div>
+    <button (click)="toggleSquareMode()">Create Square</button>
+  </div>
   <div
     leaflet
     [leafletOptions]="{ center: [51.505, -0.09], zoom: 13 }"
