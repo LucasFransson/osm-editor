@@ -63,10 +63,13 @@ button {
   width: 15rem;
   height: 40rem;
   display: grid;
-  grid-template-rows: 4rem 10rem auto 2rem;
-  grid-template: 2;
+  // grid-template-rows: 4rem 10rem auto 2rem;
+  grid-auto-rows: min-content;
+  // grid-template: 2;
 
   &__tab {
+    color: $color-neutral-100;
+    text-align: center;
     height: 4rem;
     background-color: $color-neutral-800;
     transition: all 0.2s ease-in-out;
@@ -91,7 +94,8 @@ button {
     font-size: 1.6rem;
 
     &--save {
-      grid-row: 3;
+      margin-top: 3rem;
+      grid-row: 6;
       background-color: $color-primary-500;
       color: $color-neutral-100;
       justify-self: center;
@@ -119,8 +123,8 @@ button {
     justify-content: center;
 
     svg {
-      margin-right: 1rem;
-      margin-left: -0.5rem;
+      margin-right: 0.5rem;
+      margin-left: -2.5rem;
     }
   }
 

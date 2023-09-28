@@ -26,6 +26,12 @@ const DEFAULT_ICON = L.icon({
 
 L.Marker.prototype.options.icon = DEFAULT_ICON;
 
+enum EditorMode {
+  POLYGON,
+  SINGLE_NODE,
+  SQUARE,
+}
+
 @Component({
   selector: 'app-osm-editor',
   templateUrl: './osm-editor.component.html',
@@ -38,9 +44,11 @@ export class OsmEditorComponent implements OnInit {
   nodes: L.Marker[] = [];
   currentPolygon?: L.Polygon;
   savedPolygons: L.Polygon[] = [];
+  public EditorMode = EditorMode;
+  currentMode: EditorMode = EditorMode.POLYGON;
 
-  isSingleNodeMode = false;
-  isSquareMode = false; // TODO: Change name and refactor
+  // isSingleNodeMode = false;
+  // isSquareMode = false; // TODO: Change name and refactor
   squareWidth = 1; // This represents 0.001 internally due to the SCALE_FACTOR
   squareHeight = 1;
   // squareWidth = 0.001; // Default width for the square
@@ -48,14 +56,26 @@ export class OsmEditorComponent implements OnInit {
 
   ngOnInit() {}
 
-  toggleSquareMode() {
-    this.isSquareMode = !this.isSquareMode;
+  setModeToDefault() {
+    this.currentMode = EditorMode.POLYGON;
   }
 
-  toggleSingleNodeMode() {
-    this.isSingleNodeMode = !this.isSingleNodeMode;
-    this.isSquareMode = false; // Ensure square mode is off when single node mode is on
+  setModeToSingleNode() {
+    this.currentMode = EditorMode.SINGLE_NODE;
   }
+
+  setModeToSquare() {
+    this.currentMode = EditorMode.SQUARE;
+  }
+
+  // toggleSquareMode() {
+  //   this.isSquareMode = !this.isSquareMode;
+  // }
+
+  // toggleSingleNodeMode() {
+  //   this.isSingleNodeMode = !this.isSingleNodeMode;
+  //   this.isSquareMode = false; // Ensure square mode is off when single node mode is on
+  // }
 
   onMapReady(map: L.Map) {
     this.map = map;
@@ -94,28 +114,56 @@ export class OsmEditorComponent implements OnInit {
   onMapClick(e: L.LeafletMouseEvent) {
     if (!this.map) return; // Exit if map is not initialized
 
-    if (this.isSquareMode) {
-      this.createSquare(e.latlng);
-      this.isSquareMode = false; // Reset the mode after creating the square
-    } else if (this.isSingleNodeMode) {
-      const marker = L.marker(e.latlng, { draggable: true }).addTo(this.map);
-      marker.on('dragend', this.onMarkerDragEnd.bind(this));
-      this.nodes.push(marker);
-    } else {
-      const marker = L.marker(e.latlng, { draggable: true }).addTo(this.map);
-      marker.on('dragend', this.onMarkerDragEnd.bind(this));
-      this.nodes.push(marker);
+    switch (this.currentMode) {
+      case EditorMode.SQUARE:
+        this.createSquare(e.latlng);
+        break;
+      case EditorMode.SINGLE_NODE:
+        const singleMarker = L.marker(e.latlng, { draggable: true }).addTo(
+          this.map
+        );
+        singleMarker.on('dragend', this.onMarkerDragEnd.bind(this));
+        this.nodes.push(singleMarker);
+        break;
+      case EditorMode.POLYGON:
+      default:
+        const marker = L.marker(e.latlng, { draggable: true }).addTo(this.map);
+        marker.on('dragend', this.onMarkerDragEnd.bind(this));
+        this.nodes.push(marker);
 
-      if (this.nodes.length > 1) {
-        if (this.currentPolygon) {
-          this.currentPolygon.remove();
+        if (this.nodes.length > 1) {
+          if (this.currentPolygon) {
+            this.currentPolygon.remove();
+          }
+
+          const latlngs = this.nodes.map((node) => node.getLatLng());
+          this.currentPolygon = L.polygon(latlngs).addTo(this.map);
         }
-
-        const latlngs = this.nodes.map((node) => node.getLatLng());
-        this.currentPolygon = L.polygon(latlngs).addTo(this.map);
-      }
+        break;
     }
   }
+  //   if (this.isSquareMode) {
+  //     this.createSquare(e.latlng);
+  //     this.isSquareMode = false; // Reset the mode after creating the square
+  //   } else if (this.isSingleNodeMode) {
+  //     const marker = L.marker(e.latlng, { draggable: true }).addTo(this.map);
+  //     marker.on('dragend', this.onMarkerDragEnd.bind(this));
+  //     this.nodes.push(marker);
+  //   } else {
+  //     const marker = L.marker(e.latlng, { draggable: true }).addTo(this.map);
+  //     marker.on('dragend', this.onMarkerDragEnd.bind(this));
+  //     this.nodes.push(marker);
+
+  //     if (this.nodes.length > 1) {
+  //       if (this.currentPolygon) {
+  //         this.currentPolygon.remove();
+  //       }
+
+  //       const latlngs = this.nodes.map((node) => node.getLatLng());
+  //       this.currentPolygon = L.polygon(latlngs).addTo(this.map);
+  //     }
+  //   }
+  // }
 
   onMarkerDragEnd() {
     if (this.currentPolygon && this.map) {

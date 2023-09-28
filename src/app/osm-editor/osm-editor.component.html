@@ -6,10 +6,11 @@
 </style> -->
 
 <div class="toolbar">
+  <!-- Square Tool -->
   <button
     class="toolbar__tab square-tool__button"
-    [class.toggled-on]="isSquareMode"
-    (click)="toggleSquareMode()"
+    [class.toggled-on]="currentMode === EditorMode.SQUARE"
+    (click)="setModeToSquare()"
   >
     <svg
       height="20px"
@@ -66,7 +67,8 @@
     </svg>
     <span>Square Tool</span>
   </button>
-  <div class="square-tool__expanded" *ngIf="isSquareMode">
+  <!-- Square Tool Expanding -->
+  <div class="square-tool__expanded" *ngIf="currentMode === EditorMode.SQUARE">
     <label class="square-tool__expanded--col-width">
       <p class="square-tool__text square-tool__text--width">Width</p>
       <input
@@ -86,8 +88,23 @@
       />
     </label>
   </div>
-  <button (click)="toggleSingleNodeMode()">Place Single Node</button>
-
+  <!-- Single Node -->
+  <button
+    class="toolbar__tab single-node-tool__button"
+    (click)="setModeToSingleNode()"
+    [class.toggled-on]="currentMode === EditorMode.SINGLE_NODE"
+  >
+    <span>Single Node</span>
+  </button>
+  <!-- Polygon Tool  -->
+  <button
+    class="toolbar__tab polygon-tool__button"
+    (click)="setModeToDefault()"
+    [class.toggled-on]="currentMode === EditorMode.POLYGON"
+  >
+    <span>Polygon Tool</span>
+  </button>
+  <!-- Save Area  -->
   <button
     class="toolbar__button toolbar__button--save"
     (click)="saveCurrentArea()"
