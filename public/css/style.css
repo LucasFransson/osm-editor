@@ -62,7 +62,7 @@ button {
     font-size: 1.6rem; }
     .toolbar__button--save {
       margin-top: 3rem;
-      grid-row: 6;
+      grid-row: 20;
       background-color: #438bbb;
       color: #f4f2f6;
       justify-self: center;

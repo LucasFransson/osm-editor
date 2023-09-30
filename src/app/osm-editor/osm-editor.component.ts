@@ -4,6 +4,10 @@
 import { Component, OnInit } from '@angular/core';
 import * as L from 'leaflet';
 
+
+
+
+
 // Set the default marker icon
 const DEFAULT_ICON = L.icon({
   iconUrl: 'assets/images/marker-icon.png',
@@ -38,6 +42,10 @@ export class OsmEditorComponent implements OnInit {
   currentPolygon?: L.Polygon;
   savedPolygons: L.Polygon[] = [];
   polyLines: L.Polyline[] = [];
+  markerData = new Map<L.Marker, { partOfPolygon: boolean }>();
+
+  undoStack: L.Polygon[][] = [];
+  redoStack: L.Polygon[][] = [];
 
   public EditorMode = EditorMode;
   currentMode: EditorMode = EditorMode.POLYGON; // set the default editor mode to Polygon
@@ -47,7 +55,10 @@ export class OsmEditorComponent implements OnInit {
 
   ngOnInit() {}
 
+  /////////////////////////////////
   // EditorMode State/Tool Togglers
+  /////////////////////////////////
+
   setModeToDefault() {
     this.currentMode = EditorMode.POLYGON;
   }
@@ -76,83 +87,80 @@ export class OsmEditorComponent implements OnInit {
     this.map.on('click', this.onMapClick.bind(this));
   }
 
+
+  ////////////////////////
+  // Mouse Click Functions
+  ////////////////////////
+
   onMapClick(e: L.LeafletMouseEvent) {
     if (!this.map) return; // Exit if map is not initialized
 
     switch (this.currentMode) {
       // Square Editor Mode
       case EditorMode.SQUARE:
+        this.saveState();
         this.createSquare(e.latlng);
         break;
 
       // Single Node Mode
 
       case EditorMode.SINGLE_NODE:
-        const singleMarker = L.marker(e.latlng, { draggable: true }).addTo(
-          this.map
-        );
-        singleMarker.on('dragend', () =>
-          this.onMarkerDragEnd.bind(singleMarker)
-        );
+        this.saveState();
+        const singleMarker = L.marker(e.latlng, { draggable: true }).addTo(this.map);
+        // singleMarker.on('click', (e) => this.onMarkerClick(e, marker));
+        singleMarker.on('dragend', () => this.onMarkerDragEnd.bind(singleMarker));
+        singleMarker.on('contextmenu', () => this.onMarkerRightClick(singleMarker));
+
         this.nodes.push(singleMarker);
         break;
 
       // Chained Nodes Editor Mode
       case EditorMode.CHAINED_NODES:
-        const chainedMaker = L.marker(e.latlng, { draggable: true }).addTo(
-          this.map
-        );
-        chainedMaker.on('dragend', () => this.onMarkerDragEnd(chainedMaker));
-        this.nodes.push(chainedMaker);
+        this.saveState();
+        if(this.nodes.length > 0 && e.latlng.distanceTo(this.nodes[0].getLatLng()) <= 10) {
+          // Close the chain by connecting the nodes that are <= 10m from eachother
+          const latlngs = [...this.nodes.map((node)=>node.getLatLng(),this.nodes[0].getLatLng())];
 
-        if (this.nodes.length > 1) {
-          const previousMarker = this.nodes[this.nodes.length - 2];
-          const polyLine = L.polyline([
-            previousMarker.getLatLng(),
-            chainedMaker.getLatLng(),
-          ]).addTo(this.map);
-          this.polyLines.push(polyLine);
+          // Create a polygon of the chained nodes/markers
+          this.currentPolygon = L.polygon(latlngs).addTo(this.map);
+          this.nodes.forEach(marker => {this.markerData.set(marker,{partOfPolygon:true})})
+          // this.nodes.forEach(marker => {marker.options.partOfPolygon=true;});
+          //this.nodes = []; // Clear the nodes ? Do I want to do this?
         }
-        break;
+        else {
+          const chainedMarker = L.marker(e.latlng, { draggable: true }).addTo(this.map);
+          chainedMarker.on('dragend', () => this.onMarkerDragEnd(chainedMarker));
+          // chainedMaker.on('click', (e) => this.onMarkerClick(e, marker));
+          chainedMarker.on('contextmenu', () => this.onMarkerRightClick(chainedMarker));
+          this.nodes.push(chainedMarker);
 
-        // case EditorMode.CHAINED_NODES:
-        //   // Check if the clicked point is within 10 meters of the first node
-        //   if (
-        //     this.nodes.length > 0 &&
-        //     e.latlng.distanceTo(this.nodes[0].getLatLng()) <= 10
-        //   ) {
-        //     // Close the chain by connecting the last node to the first node
-        //     const latlngs = [
-        //       ...this.nodes.map((node) => node.getLatLng()),
-        //       this.nodes[0].getLatLng(),
-        //     ];
-        //     // Create a polygon of the chained nodes
-        //     this.currentPolygon = L.polygon(latlngs).addTo(this.map);
-        //     this.nodes = []; // Clear the nodes
-        //   } else {
-        //     const chainedMarker = L.marker(e.latlng, { draggable: true }).addTo(
-        //       this.map
-        //     );
-        //     chainedMarker.on('dragend', () =>
-        //       this.onMarkerDragEnd.bind(chainedMarker)
-        //     );
-        //     this.nodes.push(chainedMarker);
-
-        //     if (this.nodes.length > 1) {
-        //       const latlngs = [
-        //         this.nodes[this.nodes.length - 2].getLatLng(),
-        //         chainedMarker.getLatLng(),
-        //       ];
-        //       L.polyline(latlngs).addTo(this.map); // Continue adding lines between nodes
-        //     }
-        //   }
+          if (this.nodes.length > 1) {
+            const previousMarker = this.nodes[this.nodes.length - 2];
+            const polyLine = L.polyline([previousMarker.getLatLng(),chainedMarker.getLatLng(),]).addTo(this.map);
+            this.polyLines.push(polyLine);
+          }
+        }
+        if (this.currentPolygon) {
+          const index = this.savedPolygons.indexOf(this.currentPolygon);
+          if (index !== -1) {
+              this.savedPolygons[index] = this.currentPolygon;
+          } else {
+              this.savedPolygons.push(this.currentPolygon);
+          }
+        }
+      
         break;
       // Polygon Editor Mode
       case EditorMode.POLYGON:
       default:
+        this.saveState();
         const marker = L.marker(e.latlng, { draggable: true }).addTo(this.map);
+        
         // marker.on('dragend', this.onMarkerDragEnd.bind(this));
         marker.on('dragend', () => this.onMarkerDragEnd(marker));
+        // marker.on('click', (e) => this.onMarkerClick(e, marker));
+        // marker.on('click', () => this.onMarkerClick(marker));
+        marker.on('contextmenu', () => this.onMarkerRightClick(marker));
         this.nodes.push(marker);
 
         if (this.nodes.length > 1) {
@@ -162,12 +170,55 @@ export class OsmEditorComponent implements OnInit {
 
           const latlngs = this.nodes.map((node) => node.getLatLng());
           this.currentPolygon = L.polygon(latlngs).addTo(this.map);
+          
         }
         break;
     }
   }
 
+  onMarkerRightClick(marker: L.Marker) {
+    this.saveState();
+    const isConfirmed = window.confirm("Do you want to remove this node?");
+
+    if(!isConfirmed) return;
+
+
+    marker.remove();
+    
+
+    const index = this.nodes.indexOf(marker);
+    if (index !== -1) {
+      this.nodes.splice(index, 1);
+    }
+    
+    switch (this.currentMode) {
+      case EditorMode.CHAINED_NODES:
+          // Remove associated polylines
+          if (index !== -1 && index < this.polyLines.length) {
+              this.polyLines[index].remove();
+              this.polyLines.splice(index, 1);
+          }
+          if (index > 0) {
+              this.polyLines[index - 1].remove();
+              this.polyLines.splice(index - 1, 1);
+          }
+          break;
+
+      case EditorMode.POLYGON:
+          // Redraw the polygon
+          if (this.currentPolygon) {
+              this.currentPolygon.remove();
+              const latlngs = this.nodes.map(node => node.getLatLng());
+              this.currentPolygon = L.polygon(latlngs).addTo(this.map!);
+          }
+          break;
+
+      // Handle other modes as necessary
+    }
+  }
+
   onMarkerDragEnd(marker: L.Marker) {
+    this.saveState();
     switch (this.currentMode) {
       case EditorMode.POLYGON:
         if (this.currentPolygon && this.map) {
@@ -178,41 +229,58 @@ export class OsmEditorComponent implements OnInit {
       case EditorMode.SINGLE_NODE:
         break;
       case EditorMode.SQUARE:
+        if (this.currentPolygon && this.map) {
+          const latlngs = this.nodes.map((node) => node.getLatLng());
+          this.currentPolygon.setLatLngs(latlngs);
+        }
         break;
       case EditorMode.CHAINED_NODES:
-        const markerIndex = this.nodes.indexOf(marker);
-        if (markerIndex === -1) {
-          return;
-        }
+        if (this.markerData.get(marker)?.partOfPolygon) { 
+          const latlngs = this.nodes.map(node => node.getLatLng());
+          this.currentPolygon?.setLatLngs(latlngs);
+  
+          // DONT REMOVE! BREAK POLYGON AND GO BACK TO CHAIN NOT FULLY WORKING
+          // Optional: Convert back to chained nodes
+          // if (this.currentPolygon) {
+          //   this.currentPolygon.remove();
+          //   this.currentPolygon = undefined;
+          // }
 
-        if (markerIndex > 0) {
-          const previousPolyLine = this.polyLines[markerIndex - 1];
-          const latlngs = [
-            this.nodes[markerIndex - 1].getLatLng(),
-            marker.getLatLng(),
-          ];
-          previousPolyLine.setLatLngs(latlngs);
+          // if(this.map) {
+          //   const mapInstance = this.map;
+          //   this.polyLines.forEach(polyline => polyline.addTo(mapInstance));
+          // }
+          // if(this.map) {
+          //  this.polyLines.forEach(polyline => polyline.addTo(this.map!)); // TODO: UNTESTED AND UNSAFE USE of Non-null Assertion Operator '!' for testing purposes
+          // }
         }
+        else {
+          const markerIndex = this.nodes.indexOf(marker);
+          if (markerIndex === -1) {
+            return;
+          }
 
-        if (markerIndex < this.nodes.length - 1) {
-          const nextPolyLine = this.polyLines[markerIndex];
-          const latlngs = [
-            marker.getLatLng(),
-            this.nodes[markerIndex + 1].getLatLng(),
-          ];
+          if (markerIndex > 0) {
+            const previousPolyLine = this.polyLines[markerIndex - 1];
+            const latlngs = [this.nodes[markerIndex - 1].getLatLng(),marker.getLatLng(),];
 
-          nextPolyLine.setLatLngs(latlngs);
-        }
+            previousPolyLine.setLatLngs(latlngs);
+          }
+
+          if (markerIndex < this.nodes.length - 1) {
+            const nextPolyLine = this.polyLines[markerIndex];
+            const latlngs = [marker.getLatLng(),this.nodes[markerIndex + 1].getLatLng(),];
+
+            nextPolyLine.setLatLngs(latlngs);
+          }
         break;
+      }
     }
   }
 
-  // onMarkerDragEnd() {
-  //   if (this.currentPolygon && this.map) {
-  //     const latlngs = this.nodes.map((node) => node.getLatLng());
-  //     this.currentPolygon.setLatLngs(latlngs);
-  //   }
-  // }
+  ////////////////////////
+  // Square Tool Functions
+ ////////////////////////
 
   createSquare(center: L.LatLng) {
     // Calculate half width and height for positioning
@@ -224,14 +292,17 @@ export class OsmEditorComponent implements OnInit {
       center.lat + halfHeight,
       center.lng - halfWidth
     );
+
     const topRight = new L.LatLng(
       center.lat + halfHeight,
       center.lng + halfWidth
     );
+    
     const bottomRight = new L.LatLng(
       center.lat - halfHeight,
       center.lng + halfWidth
     );
+
     const bottomLeft = new L.LatLng(
       center.lat - halfHeight,
       center.lng - halfWidth
@@ -247,6 +318,8 @@ export class OsmEditorComponent implements OnInit {
 
     // Add markers to the map and to the nodes array
     markers.forEach((marker) => {
+      // marker.on('click', (e) => this.onMarkerClick(e, marker));
+      marker.on('contextmenu', () => this.onMarkerRightClick(marker));
       marker.addTo(this.map!);
       this.nodes.push(marker);
     });
@@ -256,7 +329,119 @@ export class OsmEditorComponent implements OnInit {
     this.currentPolygon = L.polygon(latlngs).addTo(this.map!);
   }
 
+  ////////////////////////////////
+  // Areas/Map Managing Functions
+  ///////////////////////////////
+
+
+  undo() {
+    console.log("undo Clicked");
+    console.log(this.undoStack);
+    if(this.undoStack.length===0){
+      console.log("undo returned")
+      return;
+    }
+
+    // Save the current state to the redo stack
+    this.redoStack.push([...this.savedPolygons]);
+
+    // restore the previous state from the undo stack
+    this.savedPolygons = this.undoStack.pop() || [];
+
+    this.updateMap();
+    console.log(this.undoStack);
+  }
+
+  redo() {
+    console.log("redo Clicked");
+    console.log(this.redoStack);
+    if(this.redoStack.length===0) { 
+      console.log("redo returned")
+      return;
+     
+    }
+
+     // Save the current state to the undo stack
+    this.undoStack.push([...this.savedPolygons]);
+    // restore the previous state from the redo stack
+    this.savedPolygons = this.redoStack.pop() || [];
+
+    this.updateMap();
+    console.log(this.redoStack);
+  }
+
+
+  updateMap() {
+    if(!this.map) { return ;}  // If map is not initialized correctly, break the function
+
+    // remove all current Polygons from the map
+    this.savedPolygons.forEach(polygon => polygon.remove());
+
+    // Remove all nodes and polylines
+    this.nodes.forEach(node => node.remove());
+    this.polyLines.forEach(polyline => polyline.remove());
+
+    // Clear the nodes and polylines arrays
+    this.nodes = [];
+    this.polyLines = [];
+
+    // Add all Polygons from the saved state to the map
+    this.savedPolygons.forEach(polygon => {
+        polygon.addTo(this.map!);
+
+        // If the current mode is CHAINED_NODES, restore the nodes and polylines
+        if (this.currentMode === EditorMode.CHAINED_NODES) {
+            const latLngsArray = polygon.getLatLngs()[0] as L.LatLng[];
+            latLngsArray.forEach((latLng: L.LatLng, index: number) => {
+                const marker = L.marker(latLng, { draggable: true });
+                marker.on('contextmenu', () => this.onMarkerRightClick(marker));
+                marker.addTo(this.map!);
+                this.nodes.push(marker);
+
+                // If it's not the first marker, create a polyline connecting it to the previous marker
+                if (index > 0) {
+                    const polyLine = L.polyline([this.nodes[index - 1].getLatLng(), latLng]).addTo(this.map!);
+                    this.polyLines.push(polyLine);
+                }
+            });
+        }
+    });
+  }
+
+  // Auto-save function for redo/undo states called on every change to map
+  // saveState() {
+  //   console.log("Saving state...");
+  //   console.log("Current savedPolygons:", this.savedPolygons);
+  //   console.log("Last state in undoStack:", this.undoStack[this.undoStack.length - 1]);
+    
+  //   this.undoStack.push([...this.savedPolygons]);   // Always push the current state to the undo stack
+  //   this.redoStack = [];   // Clear the redo stack
+
+  //   console.log("Updated undoStack:", this.undoStack);
+
+  //   // if (JSON.stringify(this.savedPolygons) !== JSON.stringify(this.undoStack[this.undoStack.length - 1])) {
+
+  //   //   this.undoStack.push([...this.savedPolygons]);   // push the current state to the undo stack
+  //   //   this.redoStack = [];   // Clear the redo stack (since a new state is saved)
+  //   // }
+  // }
+
+  saveState() {
+    console.log("Saving state...");
+    console.log("Current savedPolygons:", this.savedPolygons);
+    console.log("Last state in undoStack:", this.undoStack[this.undoStack.length - 1]);
+    
+    // Capture the current state of the savedPolygons array
+    this.undoStack.push([...this.savedPolygons]);
+    this.redoStack = [];   // Clear the redo stack
+
+    console.log("Updated undoStack:", this.undoStack);
+  }
+
   saveCurrentArea() {
+
+    this.saveState();
+
     if (this.currentPolygon) {
       // Save the current polygon to the savedPolygons array
       this.savedPolygons.push(this.currentPolygon);
@@ -269,148 +454,42 @@ export class OsmEditorComponent implements OnInit {
   }
 }
 
-// WORKING SAVE BUT NOT SAVING CHAINED NDOES
-//   saveCurrentArea() {
-//     if (this.currentPolygon) {
-//       // Save the current polygon to the savedPolygons array
-//       this.savedPolygons.push(this.currentPolygon);
 
-//       // Clear the current markers and polygon for the next area
-//       this.nodes.forEach((marker) => marker.remove());
-//       this.nodes = [];
-//       this.currentPolygon = undefined;
-//     }
-//   }
-// }
 
-// onMapReady(map: L.Map) {
-//   this.map = map;
-//   this.map.on('click', this.onMapClick.bind(this));
-// }
+  // updateMap() {
+  //   if(!this.map) { return ;}  // If map is not initialized correctly, break the function
 
-//const size = 0.001; // Adjust this value for the size of the square
-// Calculate the 4 corners of the square
-// const topLeft = new L.LatLng(center.lat + size, center.lng - size);
-// const topRight = new L.LatLng(center.lat + size, center.lng + size);
-// const bottomRight = new L.LatLng(center.lat - size, center.lng + size);
-// const bottomLeft = new L.LatLng(center.lat - size, center.lng - size);
+  //   // // remove all current Polygons from the map
+  //   // this.savedPolygons.forEach(polygon => polygon.remove());
 
-//   if (this.isSquareMode) {
-//     this.createSquare(e.latlng);
-//     this.isSquareMode = false; // Reset the mode after creating the square
-//   } else if (this.isSingleNodeMode) {
-//     const marker = L.marker(e.latlng, { draggable: true }).addTo(this.map);
-//     marker.on('dragend', this.onMarkerDragEnd.bind(this));
-//     this.nodes.push(marker);
-//   } else {
-//     const marker = L.marker(e.latlng, { draggable: true }).addTo(this.map);
-//     marker.on('dragend', this.onMarkerDragEnd.bind(this));
-//     this.nodes.push(marker);
+  //   // // Add all Polygons from the saved state to the map
+  //   // this.savedPolygons.forEach(polygon=>polygon.addTo(this.map!));
 
-//     if (this.nodes.length > 1) {
-//       if (this.currentPolygon) {
-//         this.currentPolygon.remove();
-//       }
-
-//       const latlngs = this.nodes.map((node) => node.getLatLng());
-//       this.currentPolygon = L.polygon(latlngs).addTo(this.map);
-//     }
-//   }
-// }
-
-//   completeChain() {
-//     if (this.currentMode === EditorMode.CHAINED_NODES && this.nodes.length > 1) {
-//         const latlngs = [this.nodes[this.nodes.length - 1].getLatLng(), this.nodes[0].getLatLng()];
-//         L.polyline(latlngs).addTo(this.map);
-//         this.setModeToDefault();
-//     }
-// }
-
-// WORKING BUT DOESNT CREATE AN AREA
-// case EditorMode.CHAINED_NODES:
-//   // Check if the clicked location is near the first node
-//   if (
-//     this.nodes.length > 0 &&
-//     this.map.distance(e.latlng, this.nodes[0].getLatLng()) < 10
-//     // SOME_THRESHOLD
-//   ) {
-//     // Close the chain by connecting the last node to the first node
-//     const latlngs = [
-//       this.nodes[this.nodes.length - 1].getLatLng(),
-//       this.nodes[0].getLatLng(),
-//     ];
-//     L.polyline(latlngs).addTo(this.map);
-//     // Place the last node at the position of the first node
-//     this.nodes[this.nodes.length - 1].setLatLng(
-//       this.nodes[0].getLatLng()
-//     );
-//     // Optionally, you can change the mode after closing the chain
-//     this.setModeToDefault();
-//   } else {
-//     const chainedMarker = L.marker(e.latlng, { draggable: true }).addTo(
-//       this.map
-//     );
-//     chainedMarker.on('dragend', this.onMarkerDragEnd.bind(this));
-//     this.nodes.push(chainedMarker);
-
-//     // If there's a previous node, link the new node to it
-//     if (this.nodes.length > 1) {
-//       const previousNode = this.nodes[this.nodes.length - 2];
-//       const latlngs = [
-//         previousNode.getLatLng(),
-//         chainedMarker.getLatLng(),
-//       ];
-//       L.polyline(latlngs).addTo(this.map);
-//     }
-//   }
-//   break;
-
-// case EditorMode.CHAINED_NODES:
-//   // Check if the clicked location is near the first node
-//   if (
-//     this.nodes.length > 0 &&
-//     this.map.distance(e.latlng, this.nodes[0].getLatLng()) <
-//       SOME_THRESHOLD
-//   ) {
-//     // Close the chain by connecting the last node to the first node
-//     const latlngs = [
-//       this.nodes[this.nodes.length - 1].getLatLng(),
-//       this.nodes[0].getLatLng(),
-//     ];
-//     L.polyline(latlngs).addTo(this.map);
-//     // Optionally, you can change the mode after closing the chain
-//     this.setModeToDefault();
-//   } else {
-//     const chainedMarker = L.marker(e.latlng, { draggable: true }).addTo(
-//       this.map
-//     );
-//     chainedMarker.on('dragend', this.onMarkerDragEnd.bind(this));
-//     this.nodes.push(chainedMarker);
-
-//     // If there's a previous node, link the new node to it
-//     if (this.nodes.length > 1) {
-//       const previousNode = this.nodes[this.nodes.length - 2];
-//       const latlngs = [
-//         previousNode.getLatLng(),
-//         chainedMarker.getLatLng(),
-//       ];
-//       L.polyline(latlngs).addTo(this.map);
-//     }
-//   }
-//   break;
-
-// WORKING BUT NO CONNECTIONS
-// case EditorMode.CHAINED_NODES:
-//   const chainedMarker = L.marker(e.latlng, { draggable: true }).addTo(
-//     this.map
-//   );
-//   chainedMarker.on('dragend', this.onMarkerDragEnd.bind(this));
-//   this.nodes.push(chainedMarker);
-
-//   // If there's a previous node, link the new node to it
-//   if (this.nodes.length > 1) {
-//     const previousNode = this.nodes[this.nodes.length - 2];
-//     const latlngs = [previousNode.getLatLng(), chainedMarker.getLatLng()];
-//     L.polyline(latlngs).addTo(this.map);
-//   }
-//   break;
+  //       // Remove all current Polygons and nodes from the map
+  //       this.savedPolygons.forEach(polygon => polygon.remove());
+  //       this.nodes.forEach(node => node.remove());
+    
+  //       // Clear the nodes array
+  //       this.nodes = [];
+    
+  //       // Add all Polygons from the saved state to the map
+  //       this.savedPolygons.forEach(polygon => {
+  //           polygon.addTo(this.map!);
+    
+  //           // Update the nodes array with the vertices of the polygon
+  //           const latLngsArray = polygon.getLatLngs()[0] as L.LatLng[];
+  //           latLngsArray.forEach((latLng: L.LatLng) => {
+  //               const marker = L.marker(latLng, { draggable: true });
+  //               marker.on('contextmenu', () => this.onMarkerRightClick(marker));
+  //               marker.addTo(this.map!);
+  //               this.nodes.push(marker);
+  //           });
+  //           // // Update the nodes array with the vertices of the polygon
+  //           // polygon.getLatLngs()[0].forEach((latLng: L.LatLng) => {
+  //           //     const marker = L.marker(latLng, { draggable: true });
+  //           //     marker.on('contextmenu', () => this.onMarkerRightClick(marker));
+  //           //     marker.addTo(this.map!);
+  //           //     this.nodes.push(marker);
+  //           // });
+  //       });
+  // }
