@@ -7,8 +7,9 @@
 
 <div class="toolbar">
   <!-- Square Tool -->
+
   <button
-    class="toolbar__tab square-tool__button"
+    class="toolbar__tab tool__button tool__button square-tool__button"
     [class.toggled-on]="currentMode === EditorMode.SQUARE"
     (click)="setModeToSquare()"
   >
@@ -94,7 +95,7 @@
     (click)="setModeToSingleNode()"
     [class.toggled-on]="currentMode === EditorMode.SINGLE_NODE"
   >
-    <span>Single Node</span>
+    <span>Single Node Tool</span>
   </button>
   <!-- Polygon Tool  -->
   <button
@@ -103,6 +104,14 @@
     [class.toggled-on]="currentMode === EditorMode.POLYGON"
   >
     <span>Polygon Tool</span>
+  </button>
+  <!-- Chain Tool -->
+  <button
+    class="toolbar__tab chain-tool__button"
+    [class.toggled-on]="currentMode === EditorMode.CHAINED_NODES"
+    (click)="setModeToChainedNodes()"
+  >
+    Chain Tool
   </button>
   <!-- Save Area  -->
   <button

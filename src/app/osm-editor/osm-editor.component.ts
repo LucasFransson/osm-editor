@@ -1,14 +1,3 @@
-// import { Component } from '@angular/core';
-
-// @Component({
-//   selector: 'app-osm-editor',
-//   templateUrl: './osm-editor.component.html',
-//   styleUrls: ['./osm-editor.component.scss']
-// })
-// export class OsmEditorComponent {
-
-// }
-
 import { Component, OnInit } from '@angular/core';
 // import 'leaflet-path-drag';
 import * as L from 'leaflet';
@@ -30,15 +19,17 @@ enum EditorMode {
   POLYGON,
   SINGLE_NODE,
   SQUARE,
+  CHAINED_NODES,
 }
 
 @Component({
   selector: 'app-osm-editor',
-  templateUrl: './osm-editor.component.html',
+  templa+
+  teUrl: './osm-editor.component.html',
   //styleUrls: ['./osm-editor.component.css'],
 })
 export class OsmEditorComponent implements OnInit {
-  private readonly SCALE_FACTOR = 0.001; // TODO: Conside refactoring, this is for user-friendly numbers
+  private readonly SCALE_FACTOR = 0.0001; // TODO: Conside refactoring, this is for user-friendly numbers
 
   map?: L.Map;
   nodes: L.Marker[] = [];
@@ -47,14 +38,14 @@ export class OsmEditorComponent implements OnInit {
   public EditorMode = EditorMode;
   currentMode: EditorMode = EditorMode.POLYGON;
 
-  // isSingleNodeMode = false;
-  // isSquareMode = false; // TODO: Change name and refactor
   squareWidth = 1; // This represents 0.001 internally due to the SCALE_FACTOR
   squareHeight = 1;
   // squareWidth = 0.001; // Default width for the square
   // squareHeight = 0.001; // Default height for the square
 
   ngOnInit() {}
+
+  // Current Edit Tool Togglers
 
   setModeToDefault() {
     this.currentMode = EditorMode.POLYGON;
@@ -68,14 +59,9 @@ export class OsmEditorComponent implements OnInit {
     this.currentMode = EditorMode.SQUARE;
   }
 
-  // toggleSquareMode() {
-  //   this.isSquareMode = !this.isSquareMode;
-  // }
-
-  // toggleSingleNodeMode() {
-  //   this.isSingleNodeMode = !this.isSingleNodeMode;
-  //   this.isSquareMode = false; // Ensure square mode is off when single node mode is on
-  // }
+  setModeToChainedNodes() {
+    this.currentMode = EditorMode.CHAINED_NODES;
+  }
 
   onMapReady(map: L.Map) {
     this.map = map;
@@ -88,33 +74,11 @@ export class OsmEditorComponent implements OnInit {
     this.map.on('click', this.onMapClick.bind(this));
   }
 
-  // onMapClick(e: L.LeafletMouseEvent) {
-  //   if (!this.map) return; // Exit if map is not initialized
-
-  //   if (this.isSquareMode) {
-  //     this.createSquare(e.latlng);
-  //     this.isSquareMode = false; // Reset the mode after creating the square
-  //   } else {
-  //     const marker = L.marker(e.latlng, { draggable: true }).addTo(this.map);
-  //     marker.on('dragend', this.onMarkerDragEnd.bind(this));
-
-  //     this.nodes.push(marker);
-
-  //     if (this.nodes.length > 1) {
-  //       if (this.currentPolygon) {
-  //         this.currentPolygon.remove();
-  //       }
-
-  //       const latlngs = this.nodes.map((node) => node.getLatLng());
-  //       this.currentPolygon = L.polygon(latlngs).addTo(this.map);
-  //     }
-  //   }
-  // }
-
   onMapClick(e: L.LeafletMouseEvent) {
     if (!this.map) return; // Exit if map is not initialized
 
     switch (this.currentMode) {
+      // Square Editor Mode
       case EditorMode.SQUARE:
         this.createSquare(e.latlng);
         break;
@@ -125,6 +89,38 @@ export class OsmEditorComponent implements OnInit {
         singleMarker.on('dragend', this.onMarkerDragEnd.bind(this));
         this.nodes.push(singleMarker);
         break;
+
+      // Chained Nodes Editor Mode
+      case EditorMode.CHAINED_NODES:
+        // Check if the clicked point is within 10 meters of the first node
+        if (
+          this.nodes.length > 0 &&
+          e.latlng.distanceTo(this.nodes[0].getLatLng()) <= 10
+        ) {
+          // Close the chain by connecting the last node to the first node
+          const latlngs = [
+            ...this.nodes.map((node) => node.getLatLng()),
+            this.nodes[0].getLatLng(),
+          ];
+          this.currentPolygon = L.polygon(latlngs).addTo(this.map); // Create a polygon
+          this.nodes = []; // Clear the nodes if you want to start a new chain
+        } else {
+          const chainedMarker = L.marker(e.latlng, { draggable: true }).addTo(
+            this.map
+          );
+          chainedMarker.on('dragend', this.onMarkerDragEnd.bind(this));
+          this.nodes.push(chainedMarker);
+
+          if (this.nodes.length > 1) {
+            const latlngs = [
+              this.nodes[this.nodes.length - 2].getLatLng(),
+              chainedMarker.getLatLng(),
+            ];
+            L.polyline(latlngs).addTo(this.map); // Continue adding lines between nodes
+          }
+        }
+        break;
+      // Polygon Editor Mode
       case EditorMode.POLYGON:
       default:
         const marker = L.marker(e.latlng, { draggable: true }).addTo(this.map);
@@ -142,29 +138,6 @@ export class OsmEditorComponent implements OnInit {
         break;
     }
   }
-  //   if (this.isSquareMode) {
-  //     this.createSquare(e.latlng);
-  //     this.isSquareMode = false; // Reset the mode after creating the square
-  //   } else if (this.isSingleNodeMode) {
-  //     const marker = L.marker(e.latlng, { draggable: true }).addTo(this.map);
-  //     marker.on('dragend', this.onMarkerDragEnd.bind(this));
-  //     this.nodes.push(marker);
-  //   } else {
-  //     const marker = L.marker(e.latlng, { draggable: true }).addTo(this.map);
-  //     marker.on('dragend', this.onMarkerDragEnd.bind(this));
-  //     this.nodes.push(marker);
-
-  //     if (this.nodes.length > 1) {
-  //       if (this.currentPolygon) {
-  //         this.currentPolygon.remove();
-  //       }
-
-  //       const latlngs = this.nodes.map((node) => node.getLatLng());
-  //       this.currentPolygon = L.polygon(latlngs).addTo(this.map);
-  //     }
-  //   }
-  // }
-
   onMarkerDragEnd() {
     if (this.currentPolygon && this.map) {
       const latlngs = this.nodes.map((node) => node.getLatLng());
@@ -197,13 +170,6 @@ export class OsmEditorComponent implements OnInit {
       center.lng - halfWidth
     );
 
-    //const size = 0.001; // Adjust this value for the size of the square
-    // Calculate the 4 corners of the square
-    // const topLeft = new L.LatLng(center.lat + size, center.lng - size);
-    // const topRight = new L.LatLng(center.lat + size, center.lng + size);
-    // const bottomRight = new L.LatLng(center.lat - size, center.lng + size);
-    // const bottomLeft = new L.LatLng(center.lat - size, center.lng - size);
-
     // Create markers for each corner
     const markers = [
       L.marker(topLeft, { draggable: true }),
@@ -222,6 +188,7 @@ export class OsmEditorComponent implements OnInit {
     const latlngs = [topLeft, topRight, bottomRight, bottomLeft, topLeft];
     this.currentPolygon = L.polygon(latlngs).addTo(this.map!);
   }
+
   saveCurrentArea() {
     if (this.currentPolygon) {
       // Save the current polygon to the savedPolygons array
@@ -235,7 +202,152 @@ export class OsmEditorComponent implements OnInit {
   }
 }
 
+
+
+
+
+// WORKING SAVE BUT NOT SAVING CHAINED NDOES
+//   saveCurrentArea() {
+//     if (this.currentPolygon) {
+//       // Save the current polygon to the savedPolygons array
+//       this.savedPolygons.push(this.currentPolygon);
+
+//       // Clear the current markers and polygon for the next area
+//       this.nodes.forEach((marker) => marker.remove());
+//       this.nodes = [];
+//       this.currentPolygon = undefined;
+//     }
+//   }
+// }
+
 // onMapReady(map: L.Map) {
 //   this.map = map;
 //   this.map.on('click', this.onMapClick.bind(this));
 // }
+
+//const size = 0.001; // Adjust this value for the size of the square
+// Calculate the 4 corners of the square
+// const topLeft = new L.LatLng(center.lat + size, center.lng - size);
+// const topRight = new L.LatLng(center.lat + size, center.lng + size);
+// const bottomRight = new L.LatLng(center.lat - size, center.lng + size);
+// const bottomLeft = new L.LatLng(center.lat - size, center.lng - size);
+
+//   if (this.isSquareMode) {
+//     this.createSquare(e.latlng);
+//     this.isSquareMode = false; // Reset the mode after creating the square
+//   } else if (this.isSingleNodeMode) {
+//     const marker = L.marker(e.latlng, { draggable: true }).addTo(this.map);
+//     marker.on('dragend', this.onMarkerDragEnd.bind(this));
+//     this.nodes.push(marker);
+//   } else {
+//     const marker = L.marker(e.latlng, { draggable: true }).addTo(this.map);
+//     marker.on('dragend', this.onMarkerDragEnd.bind(this));
+//     this.nodes.push(marker);
+
+//     if (this.nodes.length > 1) {
+//       if (this.currentPolygon) {
+//         this.currentPolygon.remove();
+//       }
+
+//       const latlngs = this.nodes.map((node) => node.getLatLng());
+//       this.currentPolygon = L.polygon(latlngs).addTo(this.map);
+//     }
+//   }
+// }
+
+//   completeChain() {
+//     if (this.currentMode === EditorMode.CHAINED_NODES && this.nodes.length > 1) {
+//         const latlngs = [this.nodes[this.nodes.length - 1].getLatLng(), this.nodes[0].getLatLng()];
+//         L.polyline(latlngs).addTo(this.map);
+//         this.setModeToDefault();
+//     }
+// }
+
+// WORKING BUT DOESNT CREATE AN AREA
+// case EditorMode.CHAINED_NODES:
+//   // Check if the clicked location is near the first node
+//   if (
+//     this.nodes.length > 0 &&
+//     this.map.distance(e.latlng, this.nodes[0].getLatLng()) < 10
+//     // SOME_THRESHOLD
+//   ) {
+//     // Close the chain by connecting the last node to the first node
+//     const latlngs = [
+//       this.nodes[this.nodes.length - 1].getLatLng(),
+//       this.nodes[0].getLatLng(),
+//     ];
+//     L.polyline(latlngs).addTo(this.map);
+//     // Place the last node at the position of the first node
+//     this.nodes[this.nodes.length - 1].setLatLng(
+//       this.nodes[0].getLatLng()
+//     );
+//     // Optionally, you can change the mode after closing the chain
+//     this.setModeToDefault();
+//   } else {
+//     const chainedMarker = L.marker(e.latlng, { draggable: true }).addTo(
+//       this.map
+//     );
+//     chainedMarker.on('dragend', this.onMarkerDragEnd.bind(this));
+//     this.nodes.push(chainedMarker);
+
+//     // If there's a previous node, link the new node to it
+//     if (this.nodes.length > 1) {
+//       const previousNode = this.nodes[this.nodes.length - 2];
+//       const latlngs = [
+//         previousNode.getLatLng(),
+//         chainedMarker.getLatLng(),
+//       ];
+//       L.polyline(latlngs).addTo(this.map);
+//     }
+//   }
+//   break;
+
+// case EditorMode.CHAINED_NODES:
+//   // Check if the clicked location is near the first node
+//   if (
+//     this.nodes.length > 0 &&
+//     this.map.distance(e.latlng, this.nodes[0].getLatLng()) <
+//       SOME_THRESHOLD
+//   ) {
+//     // Close the chain by connecting the last node to the first node
+//     const latlngs = [
+//       this.nodes[this.nodes.length - 1].getLatLng(),
+//       this.nodes[0].getLatLng(),
+//     ];
+//     L.polyline(latlngs).addTo(this.map);
+//     // Optionally, you can change the mode after closing the chain
+//     this.setModeToDefault();
+//   } else {
+//     const chainedMarker = L.marker(e.latlng, { draggable: true }).addTo(
+//       this.map
+//     );
+//     chainedMarker.on('dragend', this.onMarkerDragEnd.bind(this));
+//     this.nodes.push(chainedMarker);
+
+//     // If there's a previous node, link the new node to it
+//     if (this.nodes.length > 1) {
+//       const previousNode = this.nodes[this.nodes.length - 2];
+//       const latlngs = [
+//         previousNode.getLatLng(),
+//         chainedMarker.getLatLng(),
+//       ];
+//       L.polyline(latlngs).addTo(this.map);
+//     }
+//   }
+//   break;
+
+// WORKING BUT NO CONNECTIONS
+// case EditorMode.CHAINED_NODES:
+//   const chainedMarker = L.marker(e.latlng, { draggable: true }).addTo(
+//     this.map
+//   );
+//   chainedMarker.on('dragend', this.onMarkerDragEnd.bind(this));
+//   this.nodes.push(chainedMarker);
+
+//   // If there's a previous node, link the new node to it
+//   if (this.nodes.length > 1) {
+//     const previousNode = this.nodes[this.nodes.length - 2];
+//     const latlngs = [previousNode.getLatLng(), chainedMarker.getLatLng()];
+//     L.polyline(latlngs).addTo(this.map);
+//   }
+//   break;

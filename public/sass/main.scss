@@ -63,9 +63,11 @@ button {
   width: 15rem;
   height: 40rem;
   display: grid;
+  margin-right: 1rem;
   // grid-template-rows: 4rem 10rem auto 2rem;
   grid-auto-rows: min-content;
   // grid-template: 2;
+  box-shadow: 0 0 7px rgba(0, 0, 0, 0.4);
 
   &__tab {
     color: $color-neutral-100;
@@ -86,6 +88,10 @@ button {
     }
   }
 
+  &__item {
+    display: flex;
+  }
+
   &__button {
     width: 10rem;
     height: 3.5rem;
@@ -99,6 +105,7 @@ button {
       background-color: $color-primary-500;
       color: $color-neutral-100;
       justify-self: center;
+
       align-self: end;
       transition: all 0.2s ease-in-out;
 
@@ -113,18 +120,33 @@ button {
   }
 }
 
+// .tool__button {
+//   display: grid;
+//   grid-template-columns: 1rem 1fr;
+// }
+
 .square-tool {
   &__button {
     font-size: 1.6rem;
     color: $color-neutral-100;
     text-align: center;
-    display: flex;
+    // display: flex;
+    // align-items: center;
+    // justify-content: center;
+    display: grid;
+
+    grid-template-columns: 4rem 1fr;
     align-items: center;
-    justify-content: center;
 
     svg {
-      margin-right: 0.5rem;
-      margin-left: -2.5rem;
+      // margin-right: 0.5rem;
+      // margin-left: -2.5rem;
+      grid-column: 1;
+      justify-self: center;
+    }
+    span {
+      grid-column: 2;
+      justify-self: start;
     }
   }
 

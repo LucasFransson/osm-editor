@@ -37,7 +37,9 @@ button {
   width: 15rem;
   height: 40rem;
   display: grid;
-  grid-auto-rows: min-content; }
+  margin-right: 1rem;
+  grid-auto-rows: min-content;
+  box-shadow: 0 0 7px rgba(0, 0, 0, 0.4); }
   .toolbar__tab {
     color: #f4f2f6;
     text-align: center;
@@ -50,6 +52,8 @@ button {
       background-color: #747276; }
     .toolbar__tab:not(:last-child) {
       border-bottom: 1px solid #05010a; }
+  .toolbar__item {
+    display: flex; }
   .toolbar__button {
     width: 10rem;
     height: 3.5rem;
@@ -73,12 +77,15 @@ button {
   font-size: 1.6rem;
   color: #f4f2f6;
   text-align: center;
-  display: flex;
-  align-items: center;
-  justify-content: center; }
+  display: grid;
+  grid-template-columns: 4rem 1fr;
+  align-items: center; }
   .square-tool__button svg {
-    margin-right: 0.5rem;
-    margin-left: -2.5rem; }
+    grid-column: 1;
+    justify-self: center; }
+  .square-tool__button span {
+    grid-column: 2;
+    justify-self: start; }
 
 .square-tool__expanded {
   width: 10rem;
