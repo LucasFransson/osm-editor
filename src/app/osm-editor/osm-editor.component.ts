@@ -1,14 +1,12 @@
-// import { map, tileLayer, marker } from 'leaflet'; // TODO: Refactor and change to this
-// import 'leaflet-path-drag';
 
+// Angular Imports
 import { Component, OnInit } from '@angular/core';
+
+// Leaflet Imports
 import * as L from 'leaflet';
 
 
-
-
-
-// Set the default marker icon
+// Set the default marker icon for Leaflet
 const DEFAULT_ICON = L.icon({
   iconUrl: 'assets/images/marker-icon.png',
   shadowUrl: 'assets/images/marker-shadow.png',
@@ -21,7 +19,7 @@ const DEFAULT_ICON = L.icon({
 
 L.Marker.prototype.options.icon = DEFAULT_ICON;
 
-// Enums for handeling the current selected state of the Editor
+//  Enums for handling the current selected state of the Editor
 enum EditorMode {
   POLYGON,
   SINGLE_NODE,
@@ -32,27 +30,27 @@ enum EditorMode {
 @Component({
   selector: 'app-osm-editor',
   templateUrl: './osm-editor.component.html',
-  //styleUrls: ['./osm-editor.component.css'],
 })
 export class OsmEditorComponent implements OnInit {
-  private readonly SCALE_FACTOR = 0.0001; // TODO: Conside refactoring, this is for user-friendly numbers
-
+  // Class Properties
+  // Map Related Variables
+  private readonly SCALE_FACTOR = 0.0001; 
   map?: L.Map;
   nodes: L.Marker[] = [];
   currentPolygon?: L.Polygon;
   savedPolygons: L.Polygon[] = [];
   polyLines: L.Polyline[] = [];
   markerData = new Map<L.Marker, { partOfPolygon: boolean }>();
-
+  // Undo/Redo Variables
   undoStack: L.Polygon[][] = [];
   redoStack: L.Polygon[][] = [];
-
+  // Editor Tool State Variables
   public EditorMode = EditorMode;
   currentMode: EditorMode = EditorMode.POLYGON; // set the default editor mode to Polygon
-
   squareWidth = 1; // This represents 0.001 internally due to the SCALE_FACTOR
   squareHeight = 1;
 
+  // Lifecycle Hooks
   ngOnInit() {}
 
   /////////////////////////////////
@@ -74,8 +72,9 @@ export class OsmEditorComponent implements OnInit {
   setModeToChainedNodes() {
     this.currentMode = EditorMode.CHAINED_NODES;
   }
-
-  // Map Initializing
+    ////////////////////////
+    // Map Initialization and Event Handlers
+    ////////////////////////
   onMapReady(map: L.Map) {
     this.map = map;
 
@@ -87,11 +86,8 @@ export class OsmEditorComponent implements OnInit {
     this.map.on('click', this.onMapClick.bind(this));
   }
 
-
-  ////////////////////////
   // Mouse Click Functions
-  ////////////////////////
-
+  
   onMapClick(e: L.LeafletMouseEvent) {
     if (!this.map) return; // Exit if map is not initialized
 
@@ -330,7 +326,7 @@ export class OsmEditorComponent implements OnInit {
   }
 
   ////////////////////////////////
-  // Areas/Map Managing Functions
+  // STATE MANAGEMENT
   ///////////////////////////////
 
 
@@ -408,24 +404,6 @@ export class OsmEditorComponent implements OnInit {
     });
   }
 
-  // Auto-save function for redo/undo states called on every change to map
-  // saveState() {
-  //   console.log("Saving state...");
-  //   console.log("Current savedPolygons:", this.savedPolygons);
-  //   console.log("Last state in undoStack:", this.undoStack[this.undoStack.length - 1]);
-    
-  //   this.undoStack.push([...this.savedPolygons]);   // Always push the current state to the undo stack
-  //   this.redoStack = [];   // Clear the redo stack
-
-  //   console.log("Updated undoStack:", this.undoStack);
-
-  //   // if (JSON.stringify(this.savedPolygons) !== JSON.stringify(this.undoStack[this.undoStack.length - 1])) {
-
-  //   //   this.undoStack.push([...this.savedPolygons]);   // push the current state to the undo stack
-  //   //   this.redoStack = [];   // Clear the redo stack (since a new state is saved)
-  //   // }
-  // }
-
   saveState() {
     console.log("Saving state...");
     console.log("Current savedPolygons:", this.savedPolygons);
@@ -453,6 +431,26 @@ export class OsmEditorComponent implements OnInit {
     }
   }
 }
+
+
+
+  // Auto-save function for redo/undo states called on every change to map
+  // saveState() {
+  //   console.log("Saving state...");
+  //   console.log("Current savedPolygons:", this.savedPolygons);
+  //   console.log("Last state in undoStack:", this.undoStack[this.undoStack.length - 1]);
+    
+  //   this.undoStack.push([...this.savedPolygons]);   // Always push the current state to the undo stack
+  //   this.redoStack = [];   // Clear the redo stack
+
+  //   console.log("Updated undoStack:", this.undoStack);
+
+  //   // if (JSON.stringify(this.savedPolygons) !== JSON.stringify(this.undoStack[this.undoStack.length - 1])) {
+
+  //   //   this.undoStack.push([...this.savedPolygons]);   // push the current state to the undo stack
+  //   //   this.redoStack = [];   // Clear the redo stack (since a new state is saved)
+  //   // }
+  // }
 
 
 
