@@ -5,6 +5,75 @@
   
 </style> -->
 
+<!-- <div class="toolbar">
+
+ 
+  <button
+    class="toolbar__tab tool__button tool__button square-tool__button"
+    [class.toggled-on]="currentMode === EditorMode.SQUARE"
+    (click)="setModeToSquare()"
+  >
+    <span>Square Tool</span>
+  </button>
+
+  <div class="square-tool__expanded" *ngIf="currentMode === EditorMode.SQUARE">
+    <label class="square-tool__expanded--col-width">
+      <p class="square-tool__text square-tool__text--width">Width</p>
+      <input
+        class="square-tool__input square-tool__input--width"
+        [(ngModel)]="squareWidth"
+        type="number"
+        placeholder="Enter width"
+      />
+    </label>
+    <label class="square-tool__expanded--col-height">
+      <p class="square-tool__text square-tool__text--height">Height</p>
+      <input
+        class="square-tool__input square-tool__input--height"
+        [(ngModel)]="squareHeight"
+        type="number"
+        placeholder="Enter height"
+      />
+    </label>
+  </div>
+
+  <button
+    class="toolbar__tab single-node-tool__button"
+    (click)="setModeToSingleNode()"
+    [class.toggled-on]="currentMode === EditorMode.SINGLE_NODE"
+  >
+    <span>Single Node Tool</span>
+  </button>
+
+  <button
+    class="toolbar__tab polygon-tool__button"
+    (click)="setModeToDefault()"
+    [class.toggled-on]="currentMode === EditorMode.POLYGON"
+  >
+    <span>Polygon Tool</span>
+  </button>
+
+  <button
+    class="toolbar__tab chain-tool__button"
+    [class.toggled-on]="currentMode === EditorMode.CHAINED_NODES"
+    (click)="setModeToChainedNodes()"
+  >
+    Chain Tool
+  </button>
+
+  <button
+    class="toolbar__button toolbar__button--save"
+    (click)="saveCurrentArea()"
+  >
+    Save Area
+  </button>
+</div>
+<div
+  leaflet
+  [leafletOptions]="{ center: [51.505, -0.09], zoom: 13 }"
+  (leafletMapReady)="onMapReady($event)"
+></div> -->
+
 <div class="toolbar">
   <!-- Square Tool -->
 
